@@ -1,11 +1,6 @@
-  #include "Arduino.h"
-  #include <iostream>
-  
-  /* For the use of the IMU sensor */
-  #include <ArduinoBLE.h>
-  #include "Nano33BLEAccelerometer.h"
-  
-  #include "nrfx_pwm.h"
+#include <iostream>
+#include <Arduino_LSM9DS1.h>
+#include "nrfx_pwm.h"
   
   
   
