@@ -19,6 +19,8 @@ class Output {
     int value;
     Output(int pin) {
       this->pin = pin;
+      old = 0;
+      value = 0;
       // pinMode(pin, OUTPUT);
     }
 
@@ -47,26 +49,22 @@ class Output {
     void Off() {
       if (value != 0) {
         old = value;
-        value = 0;
-        // Display();
       }
-
+       value = 0;
     }
 
     void On() {
-      if (value == 0 && old != 0) {
+      if(value == 0){
         value = old;
-        old = 0;
-        //  Display();
+        old =0;
       }
-
     }
 
     void Debug() {
 
       printf("[%i]-[%i]-[%i|", value, old, pin);
-      Serial.print(digitalPinToPinName(pin));
-      Serial.print("]\n");
+      printf("%i",digitalPinToPinName(pin));
+      printf("]\n");
     }
 
 };
@@ -128,29 +126,20 @@ class RGBW {
       config.output_pins[3]  = digitalPinToPinName(WPin);
       config.top_value    = 256;
       // config.load_mode    = NRF_PWM_LOAD_INDIVIDUAL;
-      config.irq_priority = PWM_DEFAULT_CONFIG_IRQ_PRIORITY,
-      config.base_clock   = NRF_PWM_CLK_1MHz,
-      config.count_mode   = NRF_PWM_MODE_UP,
+      config.irq_priority = PWM_DEFAULT_CONFIG_IRQ_PRIORITY;
+      config.base_clock   = NRF_PWM_CLK_1MHz;
+      config.count_mode   = NRF_PWM_MODE_UP;
 
-      config.load_mode    = NRF_PWM_LOAD_COMMON,
-      config.step_mode    = NRF_PWM_STEP_AUTO,
-
-      pwmUnit = pwmModuleCount++;
-
-      uint32_t err_code = nrfx_pwm_init(&nordic_nrf5_pwm_instance[pwmUnit],
-                                        &config,
-                                        NULL);
-      APP_ERROR_CHECK(err_code);
-
-
-
+      config.load_mode    = NRF_PWM_LOAD_COMMON;
+      config.step_mode    = NRF_PWM_STEP_AUTO;
 
     }
+    
     void SetRGBW(int R, int G, int B, int W, int Intensity = 100) {
-      this->R.value = (R * Intensity) / 100;
-      this->G.value = (G * Intensity) / 100;
-      this->B.value = (B * Intensity) / 100;
-      this->W.value = (W * Intensity) / 100;
+      this->R.value = R * Intensity / 100;
+      this->G.value = G * Intensity / 100;
+      this->B.value = B * Intensity / 100;
+      this->W.value = W * Intensity / 100;
 
 
       On();
@@ -185,6 +174,14 @@ class RGBW {
       Display();
     }
 
+    void Init() {
+      pwmUnit = pwmModuleCount++;
+      uint32_t err_code = nrfx_pwm_init(&nordic_nrf5_pwm_instance[pwmUnit],
+                                        &config,
+                                        NULL);
+      APP_ERROR_CHECK(err_code);
+    }
+
     void Display() {
 
       seq_values.channel_0 = R.value;//(255 - R.value) / 4;
@@ -204,16 +201,16 @@ class RGBW {
       //B.Display();
       //W.Display();
     }
-/*
-    void StartBrake(Nano33BLEAccelerometerData accelerometerData, int delay = 10) {
-      if (!Blink) {
-        brakeCount = 1000 / delay;
-        int intensity = (accelerometerData.y * -50) + 50;
-        if (intensity > 100) intensity = 100;
-        if (intensity < 50) intensity = 50;
-        SetRGBW(Red, intensity);
-      }
-    }*/
+    /*
+        void StartBrake(Nano33BLEAccelerometerData accelerometerData, int delay = 10) {
+          if (!Blink) {
+            brakeCount = 1000 / delay;
+            int intensity = (accelerometerData.y * -50) + 50;
+            if (intensity > 100) intensity = 100;
+            if (intensity < 50) intensity = 50;
+            SetRGBW(Red, intensity);
+          }
+        }*/
 
     void EndBrake() {
       SetRGBW(Red, 50);
@@ -235,15 +232,15 @@ class RGBW {
         Switch();
       }
 
-      if (count % (5000 / delay) == 0) {
+      if (count % (5200 / delay) == 0) {
         Debug();
       }
     }
 
     void Debug() {
 
-      printf("Count:[%i]  - Blink: [%s]\n", count, Blink ? "true" : "false");
-      printf("R: ");
+      printf("\n\nCount:[%i]  - Blink: [%s]", count, Blink ? "true" : "false");
+      printf("\nR: ");
       R.Debug();
       printf("G: ");
       G.Debug();
@@ -265,7 +262,7 @@ BLEStringCharacteristic  commandCharacteristic("19B10001-E8F2-537E-4F6C-D104768A
 
 
 RGBW Left(3, 4, 5, 2);
-//RGBW Right(7,8,9,6);
+RGBW Right(7, 8, 9, 6);
 
 
 
@@ -273,17 +270,20 @@ RGBW Left(3, 4, 5, 2);
 void setup() {
   Serial.begin(4800);
 
-  // Right.SetRGBW(Red,50);
-  // Right.Blink= true;
+  Right.Init();
+  Right.SetRGBW(Orange, 100);
+  Right.Blink = true;
 
+  Right.Switch();
 
+  Left.Init();
   Left.SetRGBW(Red, 50);
   Left.Blink = true;
 
 
   // begin initialization
   if (!BLE.begin()) {
-    Serial.println("starting BLE failed!");
+    printf("starting BLE failed!\n");
 
   }
 
@@ -303,13 +303,13 @@ void setup() {
   // start advertising
   BLE.advertise();
 
-  Serial.println("BLE LED Peripheral");
+  printf("BLE LED Peripheral\n");
 
 
   if (!IMU.begin()) {
-    Serial.println("Failed to initialize IMU!");
+    printf("Failed to initialize IMU!\n");
   } else {
-    Serial.println("initialized IMU!");
+    printf("initialized IMU!\n");
   }
 
 }
@@ -330,12 +330,12 @@ void loop() {
   }
 
   if (!connected && central.connected()) {
-    Serial.println("Connected");
+    printf("Connected\n");
     connected = true;
   }
 
   if (connected && !central.connected()) {
-    Serial.println("DisConnected");
+    printf("DisConnected\n");
     connected = false;
   }
 
@@ -343,23 +343,23 @@ void loop() {
   if (central && central.connected()) {
 
     if (commandCharacteristic.written()) {
-      Serial.println("Command written");
+      printf("Command written\n");
       String command = commandCharacteristic.value();
 
       if (command.startsWith("LEFT")) {
         Left.SetRGBW(Orange);
         Left.Blink = true;
-        //Right.SetRGBW(Red);
-        //Right.Blink = false;
+        Right.SetRGBW(Red);
+        Right.Blink = false;
 
       } else if (command.startsWith("RIGHT")) {
         Left.SetRGBW(Red);
-        //Right.SetRGBW(Orange);
-        //Right.Blink = true;
+        Right.SetRGBW(Orange);
+        Right.Blink = true;
       } else if (command.startsWith("STOP")) {
         Left.SetRGBW(Red);
-        //Right.SetRGBW(Red);
-        // Right.Blink = false;
+        Right.SetRGBW(Red);
+        Right.Blink = false;
       }
 
     }
@@ -370,11 +370,13 @@ void loop() {
   if (IMU.accelerationAvailable()) {
     IMU.readAcceleration(x, y, z);
 
-    
+
   }
 
-  //    Right.Refresh();
+  Right.Refresh();
   Left.Refresh();
+
+
 
 
   delay(10);
